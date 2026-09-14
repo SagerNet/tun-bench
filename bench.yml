@@ -16,9 +16,10 @@ environments:
 implementations:
   sing-box-stable:
     type: sing-box
-    version: 1.14.0
+    version: 1.14.1
   sing-box:
-    package: ../sing-box
+    type: sing-box
+    version: 1.15.0-alpha.3
   hev-socks5-tunnel:
     type: hev-socks5-tunnel
     version: 2.17.1
@@ -30,7 +31,7 @@ implementations:
     version: 2.7.0
   mihomo:
     type: mihomo
-    version: 1.19.30
+    version: 1.19.31
   v2ray:
     type: v2ray
     version: 5.53.0
@@ -44,7 +45,7 @@ matrix:
     implementation: [ sing-box, sing-box-stable, hev-socks5-tunnel, leaf, xjasonlyu-tun2socks, mihomo, v2ray, xray ]
     ip: [ 4 ]
     network: [ tcp ]
-    stack: [ sing-box/go, sing-box-stable/gvisor, sing-box-stable/system, leaf/lwip, leaf/smoltcp,  mihomo/gvisor, mihomo/system ]
+    stack: [ sing-box/go, sing-box-stable/gvisor, sing-box-stable/system, leaf/lwip, leaf/smoltcp,  mihomo/gvisor, mihomo/system,mihomo/mips ]
     include:
       - filter:
           environment: macOS
@@ -69,7 +70,7 @@ matrix:
     type: memory
     environment: [ macOS ]
     implementation: [ sing-box, sing-box-stable, hev-socks5-tunnel, leaf, xjasonlyu-tun2socks, mihomo, v2ray, xray ]
-    stack: [ sing-box/go, sing-box-stable/gvisor, sing-box-stable/system, leaf/lwip, leaf/smoltcp,  mihomo/gvisor, mihomo/system ]
+    stack: [ sing-box/go, sing-box-stable/gvisor, sing-box-stable/system, leaf/lwip, leaf/smoltcp,  mihomo/gvisor, mihomo/system, mihomo/mips ]
     ip: [ 4 ]
     network: [ tcp, udp ]
     mtu: [ 4064 ]
