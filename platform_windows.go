@@ -29,7 +29,7 @@ var (
 	setProcessAffinity = kernel32.NewProc("SetProcessAffinityMask")
 )
 
-func preparePlatform() (environment, error) {
+func preparePlatform(_ bool) (environment, error) {
 	groups, _, _ := getGroupCount.Call()
 	if groups != 1 {
 		return environment{}, E.New("CPU measurement currently supports Windows systems with one processor group")
@@ -151,6 +151,9 @@ func execChild(_ []string) error {
 
 func prepareInterface(configuration benchmarkOptions, placement environment, networkInterface *net.Interface) (bool, error) {
 	luid, err := winipcfg.LUIDFromIndex(uint32(networkInterface.Index))
+	if errors.Is(err, windows.ERROR_NOT_FOUND) {
+		return false, nil
+	}
 	if err != nil {
 		return false, err
 	}
@@ -187,14 +190,19 @@ func prepareInterface(configuration benchmarkOptions, placement environment, net
 	return address.DadState == winipcfg.DadStatePreferred, nil
 }
 
-func configureInterface(_ context.Context, configuration benchmarkOptions, placement environment, networkInterface *net.Interface) error {
+func configureInterface(_ context.Context, configuration benchmarkOptions, placement environment, networkInterface *net.Interface) (configured bool, returnErr error) {
+	defer func() {
+		if errors.Is(returnErr, windows.ERROR_NOT_FOUND) {
+			configured, returnErr = false, nil
+		}
+	}()
 	luid, err := winipcfg.LUIDFromIndex(uint32(networkInterface.Index))
 	if err != nil {
-		return err
+		return false, err
 	}
 	err = luid.AddIPAddress(placement.address)
 	if err != nil && err != windows.ERROR_OBJECT_ALREADY_EXISTS {
-		return err
+		return false, err
 	}
 	family := winipcfg.AddressFamily(windows.AF_INET)
 	if placement.address.Addr().Is6() {
@@ -202,10 +210,11 @@ func configureInterface(_ context.Context, configuration benchmarkOptions, place
 	}
 	row, err := luid.IPInterface(family)
 	if err != nil {
-		return err
+		return false, err
 	}
 	row.NLMTU = uint32(configuration.MTU)
-	return row.Set()
+	err = row.Set()
+	return err == nil, err
 }
 
 func routePrefixes(_ context.Context) ([]netip.Prefix, error) {

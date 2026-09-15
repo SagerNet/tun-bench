@@ -8,7 +8,7 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-func architectureCPUKind(cpu int) (string, uint64, error) {
+func architectureCPUKind(cpu int, allowVirtualMachine bool) (string, uint64, error) {
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
 	var original, selected unix.CPUSet
@@ -21,7 +21,7 @@ func architectureCPUKind(cpu int) (string, uint64, error) {
 	if err != nil {
 		return "", 0, err
 	}
-	kind, capacity, err := x86CPUKind()
+	kind, capacity, err := x86CPUKind(allowVirtualMachine)
 	err = E.Append(err, unix.SchedSetaffinity(0, &original), func(restoreErr error) error {
 		return E.Cause(restoreErr, "restore CPU affinity")
 	})

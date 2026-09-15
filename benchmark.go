@@ -118,7 +118,7 @@ func (b *benchmark) startTunnel(ctx context.Context) error {
 		return err
 	}
 	var tunnelInterface *net.Interface
-	configured := false
+	configured := b.options.software == "sing-box" || b.options.software == "mihomo" && runtime.GOOS == "windows"
 	err = waitUntil(ctx, func() (bool, error) {
 		processErr := verifyProcesses(b.tunnels)
 		if processErr != nil {
@@ -129,13 +129,9 @@ func (b *benchmark) startTunnel(ctx context.Context) error {
 		if interfaceErr != nil {
 			return false, nil
 		}
-		if !configured && b.options.software != "sing-box" {
-			interfaceErr = configureInterface(ctx, b.options, b.environment, tunnelInterface)
-			if interfaceErr != nil {
-				return false, interfaceErr
-			}
-			configured = true
-			return false, nil
+		if !configured {
+			configured, interfaceErr = configureInterface(ctx, b.options, b.environment, tunnelInterface)
+			return false, interfaceErr
 		}
 		if tunnelInterface.Flags&net.FlagUp == 0 {
 			return false, nil

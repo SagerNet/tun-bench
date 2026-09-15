@@ -2,4 +2,4 @@
 
 package main
 
-func architectureCPUKind(_ int) (string, uint64, error) { return "", 0, nil }
+func architectureCPUKind(_ int, _ bool) (string, uint64, error) { return "", 0, nil }

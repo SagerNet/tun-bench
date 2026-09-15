@@ -10,13 +10,16 @@ import (
 
 func cpuid(leaf, subleaf uint32) (eax, ebx, ecx, edx uint32)
 
-func x86CPUKind() (string, uint64, error) {
+func x86CPUKind(allowVirtualMachine bool) (string, uint64, error) {
 	maximum, vendor, _, _ := cpuid(0, 0)
 	signature, _, features, _ := cpuid(1, 0)
+	kind := fmt.Sprintf("cpuid:%08x:%08x", vendor, signature)
 	if features&(1<<31) != 0 {
+		if allowVirtualMachine {
+			return "virtual CPU; host scheduling uncontrolled; " + kind, 1, nil
+		}
 		return "", 0, E.New("a hypervisor hides physical CPU placement; comparable CPU measurements require bare metal")
 	}
-	kind := fmt.Sprintf("cpuid:%08x:%08x", vendor, signature)
 	const (
 		intelVendor = 0x756e6547
 		amdVendor   = 0x68747541

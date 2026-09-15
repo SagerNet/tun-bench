@@ -23,15 +23,16 @@ import (
 )
 
 type environmentConfiguration struct {
-	Type         string `yaml:"type" json:"type"`
-	OS           string `yaml:"os" json:"os"`
-	Arch         string `yaml:"arch" json:"arch"`
-	Device       string `yaml:"device" json:"device,omitempty"`
-	Name         string `yaml:"name" json:"name,omitempty"`
-	Host         string `yaml:"host" json:"host,omitempty"`
-	User         string `yaml:"user" json:"user,omitempty"`
-	Port         int    `yaml:"port" json:"port,omitempty"`
-	IdentityFile string `yaml:"identity-file" json:"identity_file,omitempty"`
+	AllowVirtualMachine bool   `yaml:"allow-virtual-machine" json:"allow_virtual_machine,omitempty"`
+	Type                string `yaml:"type" json:"type"`
+	OS                  string `yaml:"os" json:"os"`
+	Arch                string `yaml:"arch" json:"arch"`
+	Device              string `yaml:"device" json:"device,omitempty"`
+	Name                string `yaml:"name" json:"name,omitempty"`
+	Host                string `yaml:"host" json:"host,omitempty"`
+	User                string `yaml:"user" json:"user,omitempty"`
+	Port                int    `yaml:"port" json:"port,omitempty"`
+	IdentityFile        string `yaml:"identity-file" json:"identity_file,omitempty"`
 }
 
 func (e *environmentConfiguration) applyDefaults() {

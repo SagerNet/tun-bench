@@ -1,0 +1,52 @@
+environments:
+  linux:
+    type: local
+    os: linux
+    allow-virtual-machine: true
+
+implementations:
+  sing-box-stable:
+    type: sing-box
+    version: 1.14.1
+  sing-box:
+    type: sing-box
+    version: 1.15.0-alpha.4
+  hev-socks5-tunnel:
+    type: hev-socks5-tunnel
+    version: 2.17.1
+  leaf:
+    type: leaf
+    version: 0.14.2
+  xjasonlyu-tun2socks:
+    type: xjasonlyu-tun2socks
+    version: 2.7.0
+  mihomo:
+    type: mihomo
+    version: 1.19.31
+  v2ray:
+    type: v2ray
+    version: 5.53.0
+  xray:
+    type: xray
+    version: 26.3.27
+
+matrix:
+  - name: typical
+    implementation: [ sing-box, sing-box-stable, hev-socks5-tunnel, leaf, xjasonlyu-tun2socks, mihomo, v2ray, xray ]
+    ip: [ 4 ]
+    network: [ tcp ]
+    stack: [ sing-box/go, sing-box-stable/gvisor, sing-box-stable/system, leaf/lwip, leaf/smoltcp, mihomo/gvisor, mihomo/system, mihomo/mips ]
+    mtu: [ 9000 ]
+    include:
+      - bitrate: 0
+      - parallel: 8
+      - bitrate: 1Gbps
+  - name: udp
+    implementation: [ sing-box, sing-box-stable, leaf, v2ray, xray ]
+    stack: [ sing-box/go, sing-box-stable/gvisor, sing-box-stable/system, leaf/lwip, leaf/smoltcp ]
+    ip: [ 4 ]
+    network: [ udp ]
+    mtu: [ 1500 ]
+    include:
+      - bitrate: 0
+      - parallel: 8

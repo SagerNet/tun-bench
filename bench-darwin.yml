@@ -1,17 +1,8 @@
 environments:
-  macOS:
+  darwin:
     type: local
-  linux:
-    type: orbstack
-    name: arch
-    os: linux
-    arch: arm64
-  windows:
-    type: ssh
-    host: windows
-    os: windows
-    arch: amd64
-    device: windows
+    os: darwin
+    allow-virtual-machine: true
 
 implementations:
   sing-box-stable:
@@ -19,7 +10,7 @@ implementations:
     version: 1.14.1
   sing-box:
     type: sing-box
-    version: 1.15.0-alpha.3
+    version: 1.15.0-alpha.4
   hev-socks5-tunnel:
     type: hev-socks5-tunnel
     version: 2.17.1
@@ -41,23 +32,16 @@ implementations:
 
 matrix:
   - name: typical
-    environment: [ macOS, linux, windows ]
     implementation: [ sing-box, sing-box-stable, hev-socks5-tunnel, leaf, xjasonlyu-tun2socks, mihomo, v2ray, xray ]
     ip: [ 4 ]
     network: [ tcp ]
-    stack: [ sing-box/go, sing-box-stable/gvisor, sing-box-stable/system, leaf/lwip, leaf/smoltcp,  mihomo/gvisor, mihomo/system,mihomo/mips ]
+    stack: [ sing-box/go, sing-box-stable/gvisor, sing-box-stable/system, leaf/lwip, leaf/smoltcp, mihomo/gvisor, mihomo/system, mihomo/mips ]
+    mtu: [ 4064 ]
     include:
-      - filter:
-          environment: macOS
-        mtu: [ 4064 ] # NetworkExtension limit
-      - filter:
-          environment: [ linux,windows ]
-        mtu: [ 9000 ]
       - bitrate: 0
       - parallel: 8
       - bitrate: 1Gbps
   - name: udp
-    environment: [ macOS, linux ] #
     implementation: [ sing-box, sing-box-stable, leaf, v2ray, xray ]
     stack: [ sing-box/go, sing-box-stable/gvisor, sing-box-stable/system, leaf/lwip, leaf/smoltcp ]
     ip: [ 4 ]
@@ -68,9 +52,8 @@ matrix:
       - parallel: 8
   - name: memory
     type: memory
-    environment: [ macOS ]
     implementation: [ sing-box, sing-box-stable, hev-socks5-tunnel, leaf, xjasonlyu-tun2socks, mihomo, v2ray, xray ]
-    stack: [ sing-box/go, sing-box-stable/gvisor, sing-box-stable/system, leaf/lwip, leaf/smoltcp,  mihomo/gvisor, mihomo/system, mihomo/mips ]
+    stack: [ sing-box/go, sing-box-stable/gvisor, sing-box-stable/system, leaf/lwip, leaf/smoltcp, mihomo/gvisor, mihomo/system, mihomo/mips ]
     ip: [ 4 ]
     network: [ tcp, udp ]
     mtu: [ 4064 ]

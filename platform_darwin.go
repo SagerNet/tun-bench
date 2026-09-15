@@ -61,7 +61,7 @@ func readRusage(pid int, flavor int32) (rusageInfo, error) {
 	return info, nil
 }
 
-func preparePlatform() (environment, error) {
+func preparePlatform(allowVirtualMachine bool) (environment, error) {
 	placement := environment{workers: runtime.NumCPU(), helpers: runtime.NumCPU()}
 	info, err := readRusage(os.Getpid(), 6)
 	if err == nil && info.EnergyNanojoules > 0 {
@@ -69,7 +69,7 @@ func preparePlatform() (environment, error) {
 		placement.description = "proc_pid_rusage RUSAGE_INFO_V6 CPU energy (J); includes execution on all core types"
 		return placement, nil
 	}
-	err = homogeneousDarwinCPU()
+	kind, err := homogeneousDarwinCPU(allowVirtualMachine)
 	if err != nil {
 		return placement, E.Cause(err, "no usable process energy counter, and CPU time is not comparable")
 	}
@@ -78,7 +78,7 @@ func preparePlatform() (environment, error) {
 		return placement, err
 	}
 	placement.metric = metricCPU
-	placement.description = "proc_pid_rusage user+system time; homogeneous CPU, macOS scheduler placement"
+	placement.description = "proc_pid_rusage user+system time; " + kind + "; macOS scheduler placement"
 	return placement, nil
 }
 
@@ -136,13 +136,14 @@ var machTimebaseFrequency = sync.OnceValues(func() (uint64, error) {
 	return frequency, nil
 })
 
-func configureInterface(ctx context.Context, configuration benchmarkOptions, placement environment, networkInterface *net.Interface) error {
+func configureInterface(ctx context.Context, configuration benchmarkOptions, placement environment, networkInterface *net.Interface) (bool, error) {
 	args := []string{networkInterface.Name, "inet", placement.address.Addr().String(), placement.address.Addr().Next().String(), "alias"}
 	if placement.address.Addr().Is6() {
 		args = []string{networkInterface.Name, "inet6", placement.address.String(), "alias", "-dad"}
 	}
 	args = append(args, "mtu", strconv.Itoa(configuration.MTU), "up")
-	return runCommand(ctx, "/sbin/ifconfig", args...)
+	err := runCommand(ctx, "/sbin/ifconfig", args...)
+	return err == nil, err
 }
 
 func routePrefixes(ctx context.Context) ([]netip.Prefix, error) {

@@ -2,13 +2,13 @@ package main
 
 import "golang.org/x/sys/unix"
 
-func homogeneousDarwinCPU() error {
+func homogeneousDarwinCPU(_ bool) (string, error) {
 	levels, err := unix.SysctlUint32("hw.nperflevels")
 	if err != nil {
-		return err
+		return "", err
 	}
 	if levels != 1 {
-		return errHybridDarwin
+		return "", errHybridDarwin
 	}
-	return nil
+	return "homogeneous CPU", nil
 }

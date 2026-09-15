@@ -21,13 +21,14 @@ import (
 )
 
 type workerRequest struct {
-	Environment string           `json:"environment"`
-	Local       bool             `json:"local,omitempty"`
-	OS          string           `json:"os"`
-	Arch        string           `json:"arch"`
-	FailFast    bool             `json:"fail_fast"`
-	Cases       []workerCase     `json:"cases"`
-	Report      *benchmarkReport `json:"report,omitempty"`
+	AllowVirtualMachine bool             `json:"allow_virtual_machine,omitempty"`
+	Environment         string           `json:"environment"`
+	Local               bool             `json:"local,omitempty"`
+	OS                  string           `json:"os"`
+	Arch                string           `json:"arch"`
+	FailFast            bool             `json:"fail_fast"`
+	Cases               []workerCase     `json:"cases"`
+	Report              *benchmarkReport `json:"report,omitempty"`
 }
 
 type workerCase struct {
@@ -54,7 +55,7 @@ func writeWorkerBundle(destination string, cases []benchmarkOptions, target envi
 	defer func() { returnErr = E.Errors(returnErr, file.Close()) }()
 	archive := tar.NewWriter(file)
 	defer func() { returnErr = E.Errors(returnErr, archive.Close()) }()
-	request := workerRequest{Environment: cases[0].environmentName, Local: target.Type == "local", OS: target.OS, Arch: target.Arch, Report: report, FailFast: failFast}
+	request := workerRequest{Environment: cases[0].environmentName, Local: target.Type == "local", OS: target.OS, Arch: target.Arch, Report: report, FailFast: failFast, AllowVirtualMachine: target.AllowVirtualMachine}
 	paths := make(map[string]string)
 	for _, options := range cases {
 		for _, executable := range []string{options.executable, options.iperf, options.relayExecutable} {
@@ -234,25 +235,26 @@ func runWorker(ctx context.Context, input io.Reader, output io.Writer, bundlePat
 		cancel()
 	}()
 	encoder := json.NewEncoder(output)
-	runner := benchmarkMatrix{directory: directory, cases: cases, report: request.Report, failFast: request.FailFast, saveReport: func(report *benchmarkReport, started *caseResult) error {
+	runner := benchmarkMatrix{directory: directory, cases: cases, report: request.Report, failFast: request.FailFast, allowVirtualMachine: request.AllowVirtualMachine, saveReport: func(report *benchmarkReport, started *caseResult) error {
 		return encoder.Encode(workerUpdate{Report: report, Started: started})
 	}}
 	return runner.run(ctx)
 }
 
 type benchmarkMatrix struct {
-	directory   string
-	cases       []benchmarkOptions
-	environment environment
-	failFast    bool
-	report      *benchmarkReport
-	caseIndexes []int
-	saveReport  func(*benchmarkReport, *caseResult) error
+	allowVirtualMachine bool
+	directory           string
+	cases               []benchmarkOptions
+	environment         environment
+	failFast            bool
+	report              *benchmarkReport
+	caseIndexes         []int
+	saveReport          func(*benchmarkReport, *caseResult) error
 }
 
 func (m *benchmarkMatrix) run(ctx context.Context) (returnErr error) {
 	var err error
-	m.environment, err = preparePlatform()
+	m.environment, err = preparePlatform(m.allowVirtualMachine)
 	if err != nil {
 		return err
 	}

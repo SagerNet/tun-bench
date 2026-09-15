@@ -1,0 +1,103 @@
+name: Benchmark
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: benchmark-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  benchmark:
+    name: Benchmark (${{ matrix.platform }})
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: darwin
+            runner: macos-26
+          - platform: linux
+            runner: ubuntu-24.04-arm
+          - platform: windows
+            runner: windows-2025
+    defaults:
+      run:
+        shell: bash
+    env:
+      BENCH_PLATFORM: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - name: Test
+        run: go test -race -ldflags=-checklinkname=0 ./...
+      - name: Build
+        run: go build -trimpath -ldflags=-checklinkname=0 -o tun-bench${{ runner.os == 'Windows' && '.exe' || '' }} .
+      - name: Configure Linux UDP buffers
+        if: ${{ runner.os == 'Linux' }}
+        run: sudo sysctl -w net.core.rmem_max=4194304 net.core.wmem_max=4194304
+      - name: Allow Windows benchmark traffic
+        if: ${{ runner.os == 'Windows' }}
+        shell: pwsh
+        run: >-
+          New-NetFirewallRule -DisplayName 'tun-bench TCP' -Direction Inbound -Action Allow
+          -Protocol TCP -LocalAddress 198.18.0.0/29 -RemoteAddress 198.18.0.0/29 -Profile Any
+      - name: Run benchmarks
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: ./tun-bench run "bench-$BENCH_PLATFORM.yml" --output "bench-$BENCH_PLATFORM.json" --overwrite
+      - name: Upload platform results
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: bench-${{ matrix.platform }}
+          path: bench-${{ matrix.platform }}.json
+          if-no-files-found: error
+
+  results:
+    name: Merge results
+    needs: benchmark
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: bench-*
+          path: results
+          merge-multiple: true
+      - name: Merge JSON results
+        run: |
+          jq --slurp '
+            {
+              started_at: (map(.started_at) | min),
+              finished_at: (map(.finished_at) | max),
+              environments: [.[].environments[]]
+            } + (
+              [.[].error // empty] |
+              if length == 0 then {} else {error: join("\n")} end
+            )
+          ' results/bench-darwin.json results/bench-linux.json results/bench-windows.json > bench.json
+      - name: Generate text report
+        run: go run -ldflags=-checklinkname=0 . format bench.json > bench.txt
+      - name: Upload combined results
+        if: ${{ !cancelled() && hashFiles('bench.json') != '' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: bench
+          path: |
+            bench.json
+            bench.txt
+          if-no-files-found: error

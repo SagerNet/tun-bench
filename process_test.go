@@ -62,7 +62,7 @@ func processTestHelper() {
 
 func startTestProcess(t *testing.T, args ...string) *process {
 	t.Helper()
-	placement, err := preparePlatform()
+	placement, err := preparePlatform(true)
 	if err != nil {
 		t.Fatal(err)
 	}

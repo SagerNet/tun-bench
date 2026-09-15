@@ -25,7 +25,7 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-func preparePlatform() (environment, error) {
+func preparePlatform(allowVirtualMachine bool) (environment, error) {
 	var allowed unix.CPUSet
 	err := unix.SchedGetaffinity(0, &allowed)
 	if err != nil {
@@ -36,7 +36,7 @@ func preparePlatform() (environment, error) {
 		if !allowed.IsSet(cpu) {
 			continue
 		}
-		info, infoErr := linuxCPUInfo(cpu)
+		info, infoErr := linuxCPUInfo(cpu, allowVirtualMachine)
 		if infoErr != nil {
 			return environment{}, infoErr
 		}
@@ -47,7 +47,7 @@ func preparePlatform() (environment, error) {
 	return placement, err
 }
 
-func linuxCPUInfo(cpu int) (cpuInfo, error) {
+func linuxCPUInfo(cpu int, allowVirtualMachine bool) (cpuInfo, error) {
 	info := cpuInfo{id: cpu}
 	base := fmt.Sprintf("/sys/devices/system/cpu/cpu%d", cpu)
 	core, err := os.ReadFile(filepath.Join(base, "topology/thread_siblings_list"))
@@ -55,7 +55,7 @@ func linuxCPUInfo(cpu int) (cpuInfo, error) {
 		return info, err
 	}
 	info.core = strings.TrimSpace(string(core))
-	info.kind, info.capacity, err = architectureCPUKind(cpu)
+	info.kind, info.capacity, err = architectureCPUKind(cpu, allowVirtualMachine)
 	if err != nil {
 		return info, err
 	}
@@ -212,16 +212,17 @@ func prepareInterface(configuration benchmarkOptions, placement environment, net
 	return len(queues) == configuration.queues, err
 }
 
-func configureInterface(ctx context.Context, configuration benchmarkOptions, placement environment, networkInterface *net.Interface) error {
+func configureInterface(ctx context.Context, configuration benchmarkOptions, placement environment, networkInterface *net.Interface) (bool, error) {
 	args := []string{"address", "replace", placement.address.String(), "dev", networkInterface.Name}
 	if placement.address.Addr().Is6() {
 		args = append(args, "nodad")
 	}
 	err := runCommand(ctx, "ip", args...)
 	if err != nil {
-		return err
+		return false, err
 	}
-	return runCommand(ctx, "ip", "link", "set", "dev", networkInterface.Name, "mtu", strconv.Itoa(configuration.MTU), "up")
+	err = runCommand(ctx, "ip", "link", "set", "dev", networkInterface.Name, "mtu", strconv.Itoa(configuration.MTU), "up")
+	return err == nil, err
 }
 
 func routePrefixes(ctx context.Context) ([]netip.Prefix, error) {

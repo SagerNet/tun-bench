@@ -221,7 +221,7 @@ func (p *process) waitForOutput(ctx context.Context, text string) error {
 }
 
 func waitUntil(ctx context.Context, ready func() (bool, error)) error {
-	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 	ticker := time.NewTicker(50 * time.Millisecond)
 	defer ticker.Stop()
